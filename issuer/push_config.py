@@ -6,7 +6,7 @@
   - GitHub 备通道：main 分支 config/config_N.txt + config/config_N.sig（256 字节原始签名）。
 
 凭证来源（优先级从高到低）：
-  环境变量 → 根目录 一键推送配置.local.json（gitignore）→ 代码默认值（仅非密标识）。
+  环境变量 → 工作区（配置推送工具/）一键推送配置.local.json（gitignore）→ 代码默认值（仅非密标识）。
 """
 
 from __future__ import annotations
@@ -30,12 +30,14 @@ from .sign_config import (
     _load_private_key_from_string,
 )
 
-# 项目根目录：<root>/reference/cloud_issuer/issuer/push_config.py → parents[3] = <root>
-ROOT = Path(__file__).resolve().parents[3]
-LINKS_CONFIG = ROOT / "links_config.json"
-LOCAL_SECRETS = ROOT / "一键推送配置.local.json"
+# 仓库根：<root>/reference/cloud_issuer/issuer/push_config.py → parents[3] = <root>
+# 入口脚本（配置推送工具/一键推送配置.py）会显式传入这两个环境变量以解耦目录布局。
+REPO_ROOT = Path(os.environ.get("CONFIG_PUSH_REPO_ROOT") or Path(__file__).resolve().parents[3])
+WORKSPACE = Path(os.environ.get("CONFIG_PUSH_WORKSPACE") or REPO_ROOT)
+LINKS_CONFIG = WORKSPACE / "links_config.json"
+LOCAL_SECRETS = WORKSPACE / "一键推送配置.local.json"
 # 生产公钥单一真相来源：编译进客户端的 shared/perf_pubkey.h（不依赖任何 *.pem，避免错配）
-PERF_PUBKEY_H = ROOT / "shared" / "perf_pubkey.h"
+PERF_PUBKEY_H = REPO_ROOT / "shared" / "perf_pubkey.h"
 
 CF_BASE = "https://v653tjh4t413yt76.dpdns.org"
 RAW_BASE = "https://raw.githubusercontent.com"
@@ -89,7 +91,7 @@ def _load_private_key():
     if path:
         p = Path(path)
         if not p.is_absolute():
-            p = ROOT / p
+            p = REPO_ROOT / p
         if p.exists():
             return _load_private_key_from_file(p)
     raise RuntimeError("未找到 RSA 私钥：请设置 RSA_PRIVATE_KEY 环境变量或 private_key_path")

@@ -453,9 +453,10 @@ RSA_PRIVATE_KEY="$(cat private.pem)" python -m issuer.sign_config --id 1 --confi
 
 ```bash
 # 需环境变量：GITHUB_PAT、CF_API_TOKEN（可选 CF_ACCOUNT_ID / CF_KV_ID / GITHUB_OWNER / GITHUB_REPO）
-# 或在工作区根目录放 一键推送配置.local.json（不入库）
-python 一键推送配置.py --id 1
-python 一键推送配置.py --dry-run     # 只签名 + 本地自验
+# 或在客户端仓库的 配置推送工具/ 目录放 一键推送配置.local.json（不入库）
+# Windows 下可直接双击 配置推送工具/一键推送配置.bat
+python 配置推送工具/一键推送配置.py --id 1
+python 配置推送工具/一键推送配置.py --dry-run     # 只签名 + 本地自验
 ```
 
 脚本行为：读取 `links_config.json` → 确定性序列化 → 签名 → **用生产公钥本地自验** → Git Data API 原子提交 `config_N.txt` + `config_N.sig` 到 `main` → 写入 Cloudflare KV（`config_N` / `config_N_sig`）→ 回访验签。
