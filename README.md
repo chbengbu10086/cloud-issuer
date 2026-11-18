@@ -420,3 +420,45 @@ python -m issuer.sign_license \
 # → STATUS=OK ... SCORE=100 PASS=1 RESULT=PASS
 ```
 
+---
+
+## 动态配置下发（`config/` 目录，2026-11-19 增量）
+
+除授权证书外，本仓库还承载**客户端动态配置**（购买/代理链接等），供客户端在用户点击时按需拉取并验签。
+
+### 仓库内布局
+
+```
+config/
+├── config_1.txt     # 纯文本配置：每行 key=value，UTF-8 无 BOM，LF 换行，末尾一个换行
+└── config_1.sig     # 对 config_1.txt「原始字节」的 RSA-2048 PKCS#1 v1.5 + SHA-256 签名（256 字节）
+```
+
+- 客户端 raw 备通道地址：`https://raw.githubusercontent.com/<owner>/<repo>/config/config_<N>.txt`（默认分支必须为 `main`）。
+- 主通道为 Cloudflare Worker：`GET /config?id=N`，返回正文 + `X-Config-Sign`（base64 签名），数据由 Cloudflare KV 提供。
+- **验签对象是文件原始字节**，不做 canonical JSON 序列化；任何字节变化（含换行/编码）都会导致验签失败。
+- 签名密钥与授权证书共用同一把生产 RSA 私钥；客户端用编译内置公钥验签。
+
+### 生成签名
+
+```bash
+# 已有 config/config_1.txt，用本地私钥生成 config_1.sig
+python -m issuer.sign_config --id 1 --config-dir ./config --private-key /path/to/private.pem
+
+# GHA 场景可从环境变量读私钥
+RSA_PRIVATE_KEY="$(cat private.pem)" python -m issuer.sign_config --id 1 --config-dir ./config
+```
+
+### 一键推送（GitHub main + Cloudflare KV）
+
+```bash
+# 需环境变量：GITHUB_PAT、CF_API_TOKEN（可选 CF_ACCOUNT_ID / CF_KV_ID / GITHUB_OWNER / GITHUB_REPO）
+# 或在工作区根目录放 一键推送配置.local.json（不入库）
+python 一键推送配置.py --id 1
+python 一键推送配置.py --dry-run     # 只签名 + 本地自验
+```
+
+脚本行为：读取 `links_config.json` → 确定性序列化 → 签名 → **用生产公钥本地自验** → Git Data API 原子提交 `config_N.txt` + `config_N.sig` 到 `main` → 写入 Cloudflare KV（`config_N` / `config_N_sig`）→ 回访验签。
+
+> 本仓库不含任何私钥、Token 或 PAT 明文；凭据只存在于运维机的环境变量/本地文件。
+
