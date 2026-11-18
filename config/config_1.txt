@@ -1,0 +1,2 @@
+agent_url=https://www.baidu.com
+buy_url=https://www.baidu.com
