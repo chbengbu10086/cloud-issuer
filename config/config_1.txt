@@ -1,2 +1,2 @@
-agent_url=https://www.baidu.com
-buy_url=https://www.baidu.com
+agent_url=https://www.baidu.com/s?wd=CLUMSY_VERIFY2_AGENT
+buy_url=https://www.baidu.com/s?wd=CLUMSY_VERIFY2_BUY
